@@ -1,0 +1,19 @@
+diff --git a/nav2py_drl_vo/nav2py_drl_vo_controller/CMakeLists.txt b/nav2py_drl_vo/nav2py_drl_vo_controller/CMakeLists.txt
+index 8ef4aab..ef47f9d 100644
+--- a/nav2py_drl_vo/nav2py_drl_vo_controller/CMakeLists.txt
++++ b/nav2py_drl_vo/nav2py_drl_vo_controller/CMakeLists.txt
+@@ -13,6 +13,7 @@ find_package(nav2_core REQUIRED)
+ find_package(nav2_costmap_2d REQUIRED)
+ find_package(nav2_util REQUIRED)
+ find_package(nav2py REQUIRED)
++find_package(std_msgs REQUIRED)
+ 
+ find_package(sensor_msgs REQUIRED)
+ find_package(cv_bridge REQUIRED)
+@@ -42,6 +43,7 @@ set(dependencies
+   nav2_util
+   nav2py
+   ament_index_cpp
++  std_msgs
+   sensor_msgs   
+ )

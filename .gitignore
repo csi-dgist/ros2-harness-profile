@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+out/
+.venv/
+# Fetched by scripts/setup_drlvo_jazzy.sh, never committed.
+upstream/
+results/drlvo_setup_v1/
+# Raw observation traces are published as a separate archive (750 MB).
+results/**/*.gz
+results/**/*.log
+# 단, 전수 감사가 요구하는 완결성 로그는 남긴다.
+!results/**/progress.log

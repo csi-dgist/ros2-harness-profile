@@ -1,0 +1,46 @@
+experiment:
+  application: nav2_navigate_to_pose
+  adapter: nav2_twist
+  primary_controller: AIController
+  fallback_controller: DWB
+  controller_candidate_topic: /pit/controller_candidate
+  learned_candidate_topic: /pit/learned_candidate
+  guarded_output_topic: /cmd_vel_guarded
+  final_output_topic: /cmd_vel
+  selector_topic: /controller_selector
+  fallback_evidence_topic: /local_plan
+  fallback_evidence_type: nav_msgs/msg/Path
+contract:
+  value_bounds:
+    linear_x:
+    - -0.01
+    - 0.6
+    angular_z:
+    - -1.1
+    - 1.1
+  max_staleness_ms: 80
+  compute_budget_ms: 40
+  transport_budget_ms: 80
+  replace_invalid_with_safe_value: true
+fault:
+  safe_but_late_compute_ms: 120
+  transport_ms: 1
+  arm_after_nonzero_samples: 10
+  burst_duration_s: 3.0
+  freeze_first_command: true
+  transfer_settle_ms: 60
+compiler_evidence:
+  revision: pit-profile-compiler-v1
+  semantic_profile_id: safe-mobile-command-v1
+  binding_id: nav2-twist-public-learned-dwb-v1
+  composition: projection-isolation-transfer
+  enforcement_tier: portable_rmw_boundary
+  required_backend_capabilities:
+  - observe_typed_candidate
+  - observe_source_timestamp
+  - suppress_before_actuator_endpoint
+  - publish_safe_replacement
+  - publish_transfer_decision
+  - record_normalized_evidence
+  semantic_profile_sha256: 30313f23b8a74d1a73381fa720237b9ec408329533c9701988984986a3238f9e
+  binding_sha256: 46903c29cb970bfda356e7c98e1a2690b3d29e5bade46f41e072480c3744ef33

@@ -1,0 +1,19 @@
+binding:
+  id: nav2-twist-public-learned-dwb-v1
+  application: nav2_navigate_to_pose
+  adapter: nav2_twist
+  message_type: geometry_msgs/msg/TwistStamped
+  field_map:
+    forward_speed: linear_x
+    yaw_rate: angular_z
+  deployment:
+    primary_controller: AIController
+    fallback_controller: DWB
+    controller_candidate_topic: /pit/controller_candidate
+    learned_candidate_topic: /pit/learned_candidate
+    guarded_output_topic: /cmd_vel_guarded
+    final_output_topic: /cmd_vel
+    selector_topic: /controller_selector
+    fallback_evidence_topic: /local_plan
+    fallback_evidence_type: nav_msgs/msg/Path
+  enforcement_tier: portable_rmw_boundary

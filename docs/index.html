@@ -1,0 +1,1153 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<script>(function(){try{var t=localStorage.getItem("hp-theme");
+if(t==="dark"||t==="light")document.documentElement.setAttribute("data-theme",t);}catch(e){}})();</script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ROS 2 Harness Profile — PIT enforcement for Physical AI</title>
+<meta name="description" content="Middleware-hosted Projection, Isolation, and Transfer for learned controllers in ROS 2. Case study on Nav2 with DRL and DRL-VO policies across Fast DDS and Cyclone DDS.">
+<style>
+:root{
+  --bg:#ffffff; --fg:#14181f; --mut:#5b6673; --soft:#f4f6f9; --bd:#e2e6ec;
+  --accent:#1f5fd0; --good:#0f8a5a; --bad:#c0392b; --warn:#b5740a;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1319; --fg:#e6eaf0; --mut:#95a1b0; --soft:#171d26; --bd:#252d38;
+    --accent:#6ba3f5; --good:#3fbf8a; --bad:#e8695a; --warn:#d9a441;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1319; --fg:#e6eaf0; --mut:#95a1b0; --soft:#171d26; --bd:#252d38;
+  --accent:#6ba3f5; --good:#3fbf8a; --bad:#e8695a; --warn:#d9a441;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);
+  font:18px/1.78 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  -webkit-font-smoothing:antialiased}
+.wrap{max-width:1006px;margin:0 auto;padding:0 28px}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+code,pre{font-family:var(--mono);font-size:.86em}
+
+header{border-bottom:1px solid var(--bd);padding:64px 0 44px;background:var(--soft)}
+.badge{display:inline-block;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--accent);border:1px solid var(--accent);border-radius:999px;padding:3px 11px;margin-bottom:18px}
+h1{font-size:2.2rem;line-height:1.25;margin:0 0 14px;letter-spacing:-.02em}
+.lede{font-size:1.1rem;color:var(--mut);margin:0 0 26px}
+.links{display:flex;flex-wrap:wrap;gap:10px}
+.links a{display:inline-block;font-size:.88rem;padding:8px 15px;border:1px solid var(--bd);
+  border-radius:8px;background:var(--bg)}
+.links a.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.links a:hover{text-decoration:none;border-color:var(--accent)}
+
+section{padding:52px 0;border-bottom:1px solid var(--bd)}
+h2{font-size:1.38rem;margin:0 0 8px;letter-spacing:-.01em}
+h2 + .sub{color:var(--mut);margin:0 0 26px;font-size:.95rem}
+h3{font-size:1rem;margin:30px 0 10px}
+p{margin:0 0 18px}
+ul{padding-left:21px}
+li{margin-bottom:7px}
+
+.pit{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:16px;margin:28px 0}
+.pit > div{border:1px solid var(--bd);border-radius:10px;padding:17px;background:var(--soft)}
+.pit b{display:block;font-size:.95rem;margin-bottom:7px}
+.pit span{color:var(--mut);font-size:.9rem}
+
+pre{background:var(--soft);border:1px solid var(--bd);border-radius:10px;
+  padding:18px 20px;overflow-x:auto;line-height:1.5;margin:0 0 20px}
+
+.tw{overflow-x:auto;margin:0 0 20px}
+table{border-collapse:collapse;width:100%;font-size:.9rem;min-width:520px}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--bd)}
+th{font-weight:600;color:var(--mut);font-size:.79rem;text-transform:uppercase;letter-spacing:.04em}
+td.n,th.n{text-align:right;font-family:var(--mono);font-size:.85rem}
+td.c,th.c{text-align:center}
+.legend{color:var(--mut);font-size:.85rem;margin:-8px 0 20px}
+.legend b{font-weight:600;color:var(--fg)}
+
+.replay{margin:0 0 22px}
+.replay .panes{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(360px,100%),1fr));gap:16px}
+.replay .pane{border:1px solid var(--bd);border-radius:10px;overflow:hidden;background:var(--soft)}
+.replay .cap{margin:0;padding:11px 14px;border-bottom:1px solid var(--bd);display:flex;
+  justify-content:space-between;align-items:baseline;gap:10px;font-size:.95rem;font-weight:650}
+.replay .cap .st{font-family:var(--mono);font-size:.76rem;font-weight:500;color:var(--mut)}
+.replay svg{display:block;width:100%;height:auto;background:var(--bg)}
+.replay .read{display:flex;flex-wrap:wrap;gap:6px 16px;padding:10px 14px;border-top:1px solid var(--bd);
+  font-family:var(--mono);font-size:.76rem;color:var(--mut)}
+.replay .read b{font-weight:600;color:var(--fg)}
+.replay .ctl{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin:16px 0 0}
+.replay button{font:inherit;font-size:.85rem;padding:7px 16px;border:1px solid var(--bd);
+  border-radius:8px;background:var(--bg);color:var(--fg);cursor:pointer;line-height:1}
+.replay button:hover{border-color:var(--accent);color:var(--accent)}
+.replay button.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+.replay button.pri:hover{color:#fff;opacity:.9}
+.replay input[type=range]{flex:1 1 200px;min-width:160px;accent-color:var(--accent)}
+.replay .clock{font-family:var(--mono);font-size:.8rem;color:var(--mut);min-width:112px}
+.replay select{font:inherit;font-size:.85rem;padding:6px 10px;border:1px solid var(--bd);
+  border-radius:8px;background:var(--bg);color:var(--fg)}
+.good{color:var(--good);font-weight:600}
+.bad{color:var(--bad);font-weight:600}
+
+.kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(200px,100%),1fr));gap:16px;margin:0 0 28px}
+.kpi > div{border:1px solid var(--bd);border-radius:10px;padding:16px;background:var(--soft)}
+.kpi .v{font-size:1.5rem;font-weight:650;letter-spacing:-.02em;font-family:var(--mono)}
+.kpi .l{color:var(--mut);font-size:.8rem;margin-top:5px;line-height:1.4}
+
+.note{border-left:3px solid var(--warn);background:var(--soft);padding:14px 17px;
+  border-radius:0 8px 8px 0;margin:0 0 18px;font-size:.93rem}
+.note b{color:var(--warn)}
+.claim{border-left:3px solid var(--accent);background:var(--soft);padding:14px 17px;
+  border-radius:0 8px 8px 0;margin:0 0 18px}
+.claim p{margin:0}
+
+.policy{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(380px,100%),1fr));gap:16px;margin:24px 0}
+.policy > div{border:1px solid var(--bd);border-radius:10px;padding:17px;background:var(--soft)}
+.policy b{display:block;font-size:.98rem;margin-bottom:8px}
+.policy .diff{font-size:.85rem;color:var(--accent);font-weight:600;margin-bottom:8px}
+.policy span{color:var(--mut);font-size:.89rem}
+
+figure{margin:0 0 26px}
+figcaption{margin:12px 0 0}
+video{width:100%;display:block;border:1px solid var(--bd);border-radius:10px;background:#000}
+figure img{width:100%;display:block;border:1px solid var(--bd);border-radius:10px;background:#fff}
+.vidnote{font-size:.87rem;color:var(--mut);border-left:2px solid var(--bd);padding-left:14px}
+figcaption{color:var(--mut);font-size:.88rem;line-height:1.6}
+
+.flow{background:var(--soft);border:1px solid var(--bd);border-radius:10px;padding:18px;margin:0 0 18px}
+.flow ol{margin:0;padding-left:20px}
+.flow li{margin-bottom:9px;font-size:.94rem}
+.flow li:last-child{margin-bottom:0}
+.flow b{color:var(--accent)}
+
+.hash{font-family:var(--mono);font-size:.74rem;color:var(--mut);word-break:break-all}
+.status{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(210px,100%),1fr));gap:16px}
+.status > div{border:1px solid var(--bd);border-radius:10px;padding:16px}
+.status b{display:block;margin-bottom:6px;font-size:.93rem}
+.status span{color:var(--mut);font-size:.88rem}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:7px;vertical-align:middle}
+.dot.on{background:var(--good)} .dot.wip{background:var(--warn)}
+
+.themetog{margin-left:auto;border:1px solid var(--bd);background:var(--bg);color:var(--mut);
+  border-radius:8px;padding:8px 14px;font-size:.84rem;cursor:pointer;font-family:inherit;line-height:1}
+.themetog:hover{border-color:var(--accent);color:var(--accent)}
+
+footer{padding:38px 0 56px;color:var(--mut);font-size:.88rem}
+@media (max-width:640px){h1{font-size:1.65rem}header{padding:44px 0 34px}section{padding:38px 0}
+  .wrap{padding:0 20px}body{font-size:16px}.themetog{margin-left:0}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <span class="badge">ACM Middleware 2026 · Big Ideas</span>
+    <h1>Robot middleware is the harness layer</h1>
+    <p class="lede">A learned policy's output crosses control, computing, and communication at once. We bind
+      <b>Projection</b>, <b>Isolation</b>, and <b>Transfer</b> into a single declarative contract enforced
+      at the ROS 2 middleware interface, and show it holding on Nav2 across two policies and two DDS
+      backends without touching application or controller code.</p>
+    <div class="links">
+      <a class="primary" href="https://arxiv.org/abs/2606.09416">Paper (arXiv)</a>
+      <a class="primary" href="https://github.com/csi-dgist/ros2-harness-profile">Code (GitHub)</a>
+      <a href="#why">Why middleware</a>
+      <a href="#pit">PIT</a>
+      <a href="#profile">Harness Profile</a>
+      <a href="#boundary">Enforcement point</a>
+      <a href="#results">Nav2 evaluation</a>
+      <a href="#next">Open directions</a>
+      <button class="themetog" id="themetog" type="button">Dark</button>
+    </div>
+  </div>
+</header>
+
+<section>
+  <div class="wrap">
+    <h2>The gap</h2>
+    <p class="sub">Where existing enforcement stops</p>
+    <p>Learned policies, planners, and vision-language-action models now sit on the control path of deployed
+      robots as causal participants. The layer that integrates them with timing, scheduling, and network
+      guarantees has not been named.</p>
+    <p>A software harness mediates at the boundary of each tool call. A Physical AI harness cannot, because a
+      single policy output moves all three axes at once. Its commands shift the controller's trajectory, its
+      inference time shifts the executor's schedule, and its message payload shifts the link bandwidth.</p>
+    <p>Robot middleware is the one layer of the robot stack that holds mediating abstractions over all
+      three axes at once. Operating-system runtimes and safety supervisors enforce individual constraints
+      more deeply, and orchestration frameworks operate above the loop. Middleware is where per-axis
+      enforcement can be <em>composed</em> into one contract.</p>
+
+    <h3>What a learned model has to declare</h3>
+    <p>A deterministic component made three properties implicit by design. Its output range was fixed by
+      specification, its execution time bounded in closed form, and its operating conditions fixed when it
+      was designed. The design was as good as the enforcement, so no external layer had to hold anything
+      separately. A learned model provides none of them implicitly. Each has to be declared, and then
+      something has to hold the model to it.</p>
+    <div class="pit">
+      <div><b>Output region</b><span>The values its outputs may occupy. A learned output is a sample from a
+        distribution, so the stability margin a classical controller relied on becomes a function of an
+        input that nobody bounded.</span></div>
+      <div><b>Inference budget</b><span>The computation it may consume. Inference runs for an
+        input-dependent time with no tight closed-form bound, which breaks the schedulability argument the
+        real-time layer assumed.</span></div>
+      <div><b>Operating regime</b><span>The conditions under which its outputs stay trustworthy. The result
+        crosses a shared network as a payload of variable size and cadence, so the bounded-delay envelope
+        no longer holds.</span></div>
+    </div>
+    <p>The open question is which layer can hold all three at once. The middleware community already took on
+      the governance of learned workloads in the cloud, isolating multi-tenant GPU kernels and admitting
+      inference requests by predicted quality. On the robot the picture is less settled.</p>
+
+    <h3>When a harness is not needed</h3>
+    <p>Not every learned component needs one. The harness is needed only when the model is a real-time
+      causal participant that is unbounded on all three axes at once. Three common cases fall outside it,
+      because a classical component already holds the bounds the harness would supply.</p>
+    <ul>
+      <li>A learned perception stage whose estimate a verified controller re-bounds.</li>
+      <li>An advisory planner that a human vets before execution.</li>
+      <li>An offline or non-real-time planner that sits outside the control loop.</li>
+    </ul>
+    <p>The case addressed here is the one where a single model perturbs control, execution, and transmission
+      at the same time.</p>
+  </div>
+</section>
+
+<section id="why">
+  <div class="wrap">
+    <h2>Why the middleware</h2>
+    <p class="sub">What it takes to compose across three axes</p>
+    <p>To carry out a declaration, a layer has to observe and control the axis it constrains. One distinction
+      decides the question. Observing and controlling a single axis is not enough to compose across three.
+      The GPU or operating-system scheduler observes and controls the inference budget more deeply than the
+      middleware ever will, the controller and the safety layer know the stability margin more precisely,
+      and the network stack owns delivery. Each is the strongest enforcer on its own axis, and none of them
+      can compose the three, because composition requires observing and controlling all three at once while
+      each reaches only its own.</p>
+    <div class="tw">
+    <table>
+      <thead><tr><th>Governance layer</th><th class="c">Control</th><th class="c">Computing</th>
+        <th class="c">Communication</th></tr></thead>
+      <tbody>
+        <tr><td>Robot application</td><td class="c">&#9679;</td><td class="c">&#9651;</td><td class="c">&#8211;</td></tr>
+        <tr><td><b>Robot middleware</b>, ROS 2 over DDS or Zenoh</td><td class="c"><b>&#9680;</b></td>
+          <td class="c"><b>&#9680;</b></td><td class="c"><b>&#9680;</b></td></tr>
+        <tr><td>Communication substrate</td><td class="c">&#8211;</td><td class="c">&#8211;</td><td class="c">&#9679;</td></tr>
+        <tr><td>Compute substrate</td><td class="c">&#8211;</td><td class="c">&#9679;</td><td class="c">&#8211;</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p class="legend"><b>&#9679;</b> native, the layer owns the axis &nbsp;&nbsp;<b>&#9680;</b> mediated,
+      reached through the layer's own abstractions &nbsp;&nbsp;<b>&#9651;</b> indirect, only through
+      cross-layer plumbing &nbsp;&nbsp;<b>&#8211;</b> external, delegated elsewhere</p>
+    <p>Robot middleware owns no axis the way the substrates do, and that is precisely why it can be the
+      harness. It exposes a mediated abstraction over each one, typed interfaces and QoS for control,
+      callback groups and executors for computing, and QoS and partitions for communication. Those are
+      interception surfaces. The middleware delegates per-axis enforcement to the owner of each axis and
+      binds the three into a single cross-axis contract that no single owner can see. A fleet or cloud
+      orchestrator governs above this loop, so it can never act inside it.</p>
+    <figure>
+      <img src="assets/figure1.png"
+           alt="Robot middleware as the candidate harness layer in a ROS 2 Physical AI stack, with the three axes a single AI model perturbs.">
+      <figcaption><b>Figure 1 from the paper.</b> The application layer runs an AI model alongside classical
+        nodes on the control path. Robot middleware is the robot-stack layer best positioned for joint
+        visibility and control over all three axes. The compute substrate and the communication substrate
+        each own one axis and are blind to the others. The right panel shows a single AI model disturbing
+        all three at once. Its output shifts the controller trajectory, its variable inference time shifts
+        the executor schedule, and its variable message payload shifts the link bandwidth.</figcaption>
+    </figure>
+
+  </div>
+</section>
+
+<section id="surfaces">
+  <div class="wrap">
+    <h2>What ROS 2 already has</h2>
+    <p class="sub">Three components present as structure, three present only as surfaces</p>
+    <p>Reaching all three axes does not by itself make a layer a harness. Recent harness accounts synthesise
+      into six components, three that organise the system and three that govern what flows through it. Read
+      against ROS 2, the first three are already present as structure. The other three exist only as
+      surfaces, configuration points where a constraint can be written down while nothing enforces it.</p>
+    <div class="tw">
+    <table>
+      <thead><tr><th>Component</th><th>Function</th><th>ROS 2 surface</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td><b>Role</b></td><td>Who may act, and in what operational scope</td>
+          <td>nodes, namespaces, lifecycle nodes</td><td class="good">structure</td></tr>
+        <tr><td><b>Stage</b></td><td>What sequences work and orders execution</td>
+          <td>launch and composition, executor, lifecycle transitions</td><td class="good">structure</td></tr>
+        <tr><td><b>State</b></td><td>What is retained, replayed, and inspected</td>
+          <td>QoS history and durability, rosbag2, topic statistics</td><td class="good">structure</td></tr>
+        <tr><td><b>Contract</b></td><td>How constraints on timing, format, and value are specified</td>
+          <td>IDL types, QoS deadline, lifespan, reliability, ParameterDescriptor ranges</td>
+          <td class="bad">surface only</td></tr>
+        <tr><td><b>Adapter</b></td><td>How model output is wrapped, typed, and bounded</td>
+          <td>RMW and type adapters, callback groups, executors, partitions</td>
+          <td class="bad">surface only</td></tr>
+        <tr><td><b>Recovery</b></td><td>How failures are named and responses prescribed</td>
+          <td>QoS events, lifecycle transitions, diagnostics</td><td class="bad">surface only</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p>Each of the last three stops one step short. A <code>ParameterDescriptor</code> range is checked when
+      a parameter is set, and it leaves the per-sample output a policy publishes untouched, so a learned
+      sample reaches the link with its declared range unchecked. Type adapters handle typing while callback groups,
+      executors, and partitions handle bounding, but nothing ties them into one reservation matched to the
+      model's declared load. A missed deadline or a lost liveliness arrives as an event, a state transition,
+      or a diagnostic, and can be reported without being routed into a verified fallback.</p>
+    <p><b>A surface to specify a declaration exists. The mechanism that binds it to runtime behaviour does
+      not.</b> Enforcing it has always been left to hand-built application code.</p>
+  </div>
+</section>
+
+<section id="pit">
+  <div class="wrap">
+    <h2>PIT</h2>
+    <p class="sub">Three functions a Physical AI harness must host</p>
+    <p>Each mechanism consumes one of the three declarations in a form the middleware can act on. The
+      middleware enforces a declared contract and does not certify the declaration, which stays upstream
+      work.</p>
+    <div class="pit">
+      <div><b>Projection</b><span>Gates each candidate output at publication time against three concurrent
+        predicates, the stability of the resulting trajectory, the schedulability under the executor's
+        current load, and the feasibility of delivery inside the link's reserved window. A deadline or a
+        lifespan becomes an admission decision taken before the sample enters the loop.</span></div>
+      <div><b>Isolation</b><span>Wraps the model computation so its timing and resource footprint stay
+        inside a reservation even when its internal work does not. The reservation spans two dimensions, a
+        compute slot governed by callback scheduling and a communication window governed by partition and
+        flow control, specified together and verified as consistent.</span></div>
+      <div><b>Transfer</b><span>Reroutes authority to a pre-staged verified baseline when the declared
+        distributional conditions can no longer be sustained, and reinstates model authority only after the
+        model's resource use has returned inside its declared bounds. The lifecycle state transition is the
+        natural trigger.</span></div>
+    </div>
+
+    <h3>Why all three have to sit in the same layer</h3>
+    <p>The three mechanisms close a loop, and each depends on what the others enforce. Isolation bounds the
+      space Projection checks, so a sample that would overrun its slot fails admission even when its
+      trajectory is stable. Projection's failures trigger Transfer, which holds authority at a deterministic
+      baseline until Isolation reports the model's resource use back inside bounds and Projection reopens
+      the gate. No layer below the middleware can observe all three axes at once, and no layer above can act
+      in the loop.</p>
+    <p><b>PIT composes mechanisms that already exist.</b> Projection may call a shield or a control-barrier
+      predicate, Isolation may call a reservation scheduler, and Transfer may call a Simplex-style baseline.
+      The contribution is that all three bind to one model declaration and are evaluated as one runtime
+      contract. A stable command that misses its inference slot, or a timely command that falls outside the
+      declared operating regime, is then rejected by a single governance layer that sees both conditions at
+      once.</p>
+    <figure>
+      <img src="assets/figure2.png"
+           alt="The six harness components, with role, stage, and state present as structure and contract, adapter, and recovery mapped onto Projection, Isolation, and Transfer.">
+      <figcaption><b>Figure 2 from the paper.</b> An AI model declares an output region, an inference
+        budget, and an operating regime. The upper half shows what ROS 2 already provides as structure. The
+        lower half shows the three enforcement mechanisms it still lacks. Projection turns the contract
+        surface into a runtime admission, Isolation turns the adapter surface into a reserved slot, and
+        Transfer turns the recovery surface into a routed hand-off. Role, stage, and state are retained as
+        they are. The middleware moves from a place where contracts are declared to a place where they are
+        enforced.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section id="test">
+  <div class="wrap">
+    <h2>A test for whether a system hosts a harness</h2>
+    <p class="sub">Most deployed systems fail it</p>
+    <div class="claim">
+      <p>A deployment hosts the harness when it accepts the declared <b>output region</b>, <b>inference
+        budget</b>, and <b>operating regime</b> as one runtime contract, and composes enforcement of that
+        contract across control, computing, and communication in one layer.</p>
+    </div>
+    <p>This is what separates the harness from the runtime-assurance mechanisms it builds on. Each of those
+      is sound on its own axis and built per application, and each takes only the part of the declaration
+      that falls on that axis.</p>
+    <div class="tw">
+    <table>
+      <thead><tr><th>Mechanism</th><th>Axis it governs</th><th>Where it stops short</th></tr></thead>
+      <tbody>
+        <tr><td>Control-barrier filter</td><td>Control</td>
+          <td>Gates the control axis without seeing the schedule or the link.</td></tr>
+        <tr><td>Mixed-criticality scheduler</td><td>Computing</td>
+          <td>Bounds execution with no view of control semantics or delivery.</td></tr>
+        <tr><td>Simplex monitor</td><td>Choice of controller</td>
+          <td>Switches controllers without a declared budget or transport contract.</td></tr>
+        <tr><td>Nav2 recovery behaviour</td><td>Plan health</td>
+          <td>Acts on plan health with no compute or communication reservation.</td></tr>
+        <tr><td>Autonomous-racing stack</td><td>Control and computing</td>
+          <td>Comes closest, tying a control-axis safety condition to a computing-axis reaction-time
+            change, but carries no declared contract another robot could reuse.</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h3>Relative to an external governance layer</h3>
+    <p>ROS 2 has been used as a tool registry that an agent calls, and it has been wrapped by a separate
+      governance layer placed between the application and ROS 2. Such a framework checks each capability the
+      agent invokes. That check does not reach end-to-end models that emit continuous actions without
+      invoking discrete capabilities.</p>
+    <p>The publish path catches both. Every output leaves the application through the same publish call,
+      whether it comes from a discrete capability invocation or from a monolithic policy, so a Projection
+      hook placed there applies the same check to both. <b>The position taken here is that robot middleware
+      should be the harness itself.</b></p>
+  </div>
+</section>
+
+<section id="profile">
+  <div class="wrap">
+    <h2>The Harness Profile</h2>
+    <p class="sub">A deployment artifact that declares intent</p>
+    <p>The first thing to build follows directly from the failure above. A Harness Profile is a manifest,
+      written for example as a YAML file beside the launch description, that declares the output region, the
+      inference budget, and the operating regime. The Profile is only a declaration. The mechanisms that
+      enforce it are implemented across ROS 2, DDS, and Zenoh, binding the output region to the publish
+      path, the inference budget to a joint reservation, and the operating regime to a lifecycle controller
+      the middleware already owns.</p>
+
+    <h3>The reference sketch in the paper</h3>
+<pre><code>harness_profile:
+  subject:           learned_local_control
+  port:              motion_candidate
+  output_region:     {forward_velocity: [0, 1.5], yaw_rate: [-1, 1]}
+  max_sample_age_ms: 5
+  inference_budget:  {wcet_ms: 8, rate_hz: 100}
+  transport_budget:  {max_payload_bytes: 4096, deadline_ms: 2}
+  operating_regime:  {signal: distribution_score, max: 0.7}
+  fallback_role:     verified_local_controller</code></pre>
+    <p>Such a profile need not be a new programming model. It is a deployment artifact the middleware
+      consumes directly, and it gives the middleware a single object to admit, monitor, and revoke.
+      <b>Certification of the bounds stays upstream.</b> The Profile carries them and the middleware enforces
+      them. Adoption is incremental. A node that declares no profile keeps its current behaviour, and the
+      harness binds only the outputs a profile names, so an existing stack gains governance one model at a
+      time.</p>
+
+    <h3>The profile the Nav2 evaluation actually ran</h3>
+    <p>The evaluated instance expands the same declarations into per-mechanism blocks that name what
+      happens on each violation. Both state only the <em>meaning</em> of the control, timing, communication,
+      and fallback constraints. Node names, plugin names, and vendor callback classes appear in neither.</p>
+<pre><code>harness_profile:
+  schema: pit.profile/v1
+  subject: learned_local_control
+
+  port:
+    logical_name: motion_candidate
+    type_contract: differential_drive_command/v1
+
+  projection:
+    fields:
+      - {semantic: forward_velocity, min: -0.01, max: 0.60}
+      - {semantic: yaw_rate,         min: -1.10, max: 1.10}
+    on_value_violation: replace_safe_zero
+    max_sample_age_ms: 80
+    on_stale: drop
+
+  isolation:
+    expected_rate_hz: 20
+    compute_budget_ms: 40
+    delivery_deadline_ms: 80
+    on_violation: transfer
+
+  transfer:
+    primary_role: learned_controller
+    fallback_role: verified_local_controller
+    require_fresh_output: true
+    authority_lease_ms: 80</code></pre>
+
+    <h3>Four layers</h3>
+<pre><code>Semantic Harness Profile      declares meaning only
+        ↓ compile
+Vendor-neutral Contract IR    ObservedSample · ObservedStatus · Decision · Evidence
+        ↓ backend capability check
+Backend adapter, per RMW       normalise · enforce · return evidence
+        ↓ deployment binding
+ROS 2 application graph       topics, types, field paths, endpoints</code></pre>
+    <p>The PIT decision core reads only the Contract IR and returns the same decision for the same input.
+      Each backend ships a capability descriptor, and a capability it does not declare fails closed at
+      profile-compile time. Neither of the two evaluated descriptors claims
+      <code>native_requested_deadline_status</code> or <code>native_writer_ownership_transfer</code>, so the
+      contract is evaluated on the surfaces the middleware exposes, namely typed samples, source timestamps,
+      QoS, and lifecycle state.</p>
+  </div>
+</section>
+
+<section id="boundary">
+  <div class="wrap">
+    <h2>Where the enforcement runs</h2>
+    <p class="sub">At the ROS 2 interface, on the surfaces Figure 1 marks as the harness layer</p>
+    <div class="claim">
+      <p>The gate sits on the typed ROS 2 path between the application graph and the DDS or Zenoh transport.
+        It reads typed samples, source timestamps, QoS state, and lifecycle state, and it admits, replaces,
+        or withholds each sample before the actuator endpoint. <b>These are the surfaces the paper
+        identifies as the middleware's mediated abstractions</b>, and they are the ones Figure 2 draws under
+        Contract, Adapter, and Recovery.</p>
+    </div>
+    <p>Robot middleware here means what the paper means by it, the composition of ROS 2 over a DDS or Zenoh
+      transport. Its contribution across the three axes is a set of interception surfaces, so an enforcement
+      point placed on those surfaces sits at the middleware layer by construction. Neither controller was
+      touched, and no node in the Nav2 graph was modified.</p>
+
+  </div>
+</section>
+
+<section id="results">
+  <div class="wrap">
+    <h2>Case study — Nav2</h2>
+    <p class="sub">160 runs · 2 DDS × 2 policies × 2 modes × 2 conditions × 10 held-out seeds</p>
+
+    <div class="note">
+      <b>The failure the paper opens with is the one injected here.</b> A control-barrier filter admits a
+      steering command that is stable, but the inference that produced it overran its budget, so the
+      executor missed the deadline and the command reaches the link late. The filter saw a safe trajectory,
+      the scheduler a late task, and the network a large frame. None of them saw that the late safe command
+      is now unsafe, and no fallback fires because no layer wired the budget overrun to the hand-off. In
+      what follows, Nav2's Collision Monitor plays the filter's part.
+    </div>
+
+    <p>We evaluate on ROS 2 Nav2 with two public learned navigation policies, <b>DRL</b> and <b>DRL-VO</b>,
+      and <b>DWB</b> as the verified fallback. Enforcement sits at the ROS 2 boundary after the Collision
+      Monitor and before the actuator.</p>
+
+    <h3>The fault</h3>
+    <p>An <b>unexpected processing delay</b>. After ten non-zero commands the boundary begins holding each
+      command from the learned controller for <b>121 ms</b>, 120 ms of compute and 1 ms of transport, and
+      keeps that up for a <b>3-second burst</b>. The command in flight when the burst begins is frozen, so
+      the actuator keeps receiving that same value while the robot moves on. It stays inside the declared
+      value bounds the whole time. The Profile allows 80 ms of staleness and a 40 ms compute budget, so
+      only the clock is violated.</p>
+
+    <h3>The two policies</h3>
+    <p>Both are public checkpoints from <a href="https://github.com/TempleRAIL/drl_vo_nav">TempleRAIL/drl_vo_nav</a>,
+      trained in the same environment with the same observation and action families. They share an
+      architecture and differ in one reward term, which is the kind of difference the harness should be
+      indifferent to.</p>
+    <div class="policy">
+      <div><b>DRL</b><div class="diff">without the VO heading term</div>
+        <span><code>drl_vo/src/model/drl.zip</code>. Ported from the upstream ROS 1 node, since the official
+        ROS 2 branch packages only the DRL-VO checkpoint.</span></div>
+      <div><b>DRL-VO</b><div class="diff">with the VO heading term</div>
+        <span><code>drl_vo/src/model/drl_vo.zip</code>. The velocity-obstacle based heading-direction reward
+        term is included during training.</span></div>
+    </div>
+    <p>Both are <b>sensor-conditioned</b>, meaning they map each observation directly to a command. Both open under the same observation-space shape, action-space
+      shape, <code>CustomCNN</code> class, and Stable-Baselines3 loader, and both emit a bounded
+      <code>Twist</code> through the same planner binding. The source commit and both checkpoint SHA-256
+      values are pinned in the run manifest.</p>
+
+    <h3>How the Profile composed with them</h3>
+    <p>The point is what the Profile <em>does not</em> contain. It carries no policy name, no checkpoint
+      path, and no controller class. It states value bounds, a freshness limit, a rate and compute budget, a
+      delivery deadline, and a fallback role. Which policy sits behind the logical port is a deployment
+      binding, and the contract stays the same across all of them.</p>
+    <div class="flow">
+      <ol>
+        <li>The policy emits a candidate command on the logical port. <b>The Profile never sees which policy it is.</b></li>
+        <li><b>Isolation</b> observes rate, compute budget, and delivery deadline at the middleware boundary and detects the timing violation.</li>
+        <li><b>Projection</b> evaluates value bounds and sample age under one joint contract, and denies publication of the stale command.</li>
+        <li><b>Transfer</b> revokes the learned controller's authority lease and hands off to DWB, requiring the fallback output to be fresh before it is admitted.</li>
+        <li>Evidence is returned as a vendor-neutral trace: policy label, checkpoint hash, model input checksum, raw action, bounded <code>Twist</code>, and observation-to-candidate latency.</li>
+      </ol>
+    </div>
+    <p>The compiled Profile was byte-identical and hash-identical across all four cells. Swapping DRL for
+      DRL-VO, or Fast DDS for Cyclone DDS, changed the deployment binding and
+      <code>RMW_IMPLEMENTATION</code> only. Application source modified: <b>0 LOC</b>. Controller source
+      modified: <b>0 LOC</b>.</p>
+
+    <h3>Where the obstacle comes from</h3>
+    <p>The obstacle is not placed at a fixed coordinate. It is spawned at a fixed
+      <b>predicted arc length</b> of about 1.04 m along the arc obtained by integrating the command that was
+      sitting in the queue at the moment the fault fired. Across all ten held-out seeds and both arms the
+      range stays within 1.036 to 1.045 m.</p>
+    <p>This is deliberate. Placing the obstacle on the predicted arc means <b>every run meets an obstacle
+      that is equally in its own way</b>. The
+      contract, the fault, the selection threshold, the arc length, and the obstacle duration are all fixed
+      in one byte-identical file.</p>
+    <p>The consequence is visible below. The two panels place the obstacle at different coordinates because
+      the queued angular velocity differed (−0.112 rad/s against +0.102 rad/s, giving bearings of −13.0° and
+      +11.7° from the robot heading). <b>Same rule, same arc length, different queued command.</b> The dotted
+      gold arc in the plan view below is that prediction.</p>
+
+    <h3>What actually happens</h3>
+    <p>The two runs below are the same matched pair the figures draw. Press play and the robot moves along
+      the pose trace each run actually recorded, the obstacle appears at the moment it was activated, and
+      every stale command, projection block, and transfer fires at its recorded timestamp. The gold marker
+      is where the delay starts.</p>
+    <div class="replay" id="replay">
+      <div class="panes" id="rpPanes"></div>
+      <div class="ctl">
+        <button class="pri" id="rpPlay" type="button">Play</button>
+        <button id="rpReset" type="button">Restart</button>
+        <input type="range" id="rpScrub" min="0" max="1000" value="0" step="1"
+               aria-label="Scrub the replay">
+        <span class="clock" id="rpClock">0.00 s</span>
+        <select id="rpSpeed" aria-label="Playback speed">
+          <option value="0.5">0.5&times;</option>
+          <option value="1" selected>1&times;</option>
+          <option value="2">2&times;</option>
+        </select>
+      </div>
+    </div>
+    <p class="vidnote">This is a replay of the recorded pose traces and event timestamps. The scene is drawn from the recorded positions, with the TurtleBot3 Burger body and the
+      obstacle both to scale. The obstacle is the cylinder the runs actually spawn, 0.25 m in radius and
+      0.80 m tall. Positions come from the navigation feedback trace at about 6 Hz and are interpolated
+      between samples. <b>The replay stops the robot at the moment the two footprints meet</b>, because the
+      obstacle is a solid body and that is where the encounter ends. The verdict shown at the end is the
+      audited minimum from the clearance monitor, which samples independently and less often. The two agree
+      for PIT at +0.22 m. For Profile-off the pose trace dips to &minus;0.42 m while the audited minimum is
+      &minus;0.31 m, and the verdict is an overlap on either stream.</p>
+
+    <figure>
+      <img src="assets/c7_all_runs.png"
+           alt="All 40 fault-condition pairs. Each run's obstacle sits in its own place and the trajectories differ.">
+      <figcaption>Every fault-condition run in the locked matrix, 40 on each side. Each run places its own
+        obstacle on the arc predicted from the command that was queued when the delay began, so the
+        obstacles land across a spread of about 0.94 m in y and the trajectories fan out with them.
+        <b>Left</b>, 36 of the 40 runs close to within the 0.47 m combined footprint. <b>Right</b>, none of
+        them do. The four Profile-off runs that stayed clear are the ones whose queued command steered them
+        away from their own obstacle.</figcaption>
+    </figure>
+    <p class="vidnote">The figure is generated from the run records by
+      <code>analysis/plot_c7_all_runs.py</code>, and the replay above by
+      <code>analysis/make_replay_payload.py</code>. Both ship with the repository.</p>
+
+    <div class="kpi">
+      <div><div class="v good">0 / 40</div><div class="l">collisions under fault with PIT<br>(36 / 40 without)</div></div>
+      <div><div class="v good">40 / 40</div><div class="l">runs handed off to fresh DWB control</div></div>
+      <div><div class="v good">0 / 80</div><div class="l">false transfers in normal operation</div></div>
+      <div><div class="v">0 LOC</div><div class="l">application and controller source changed</div></div>
+    </div>
+
+    <h3>Collisions under the fault condition</h3>
+    <div class="tw">
+    <table>
+      <thead><tr><th>DDS</th><th>Policy</th><th class="n">Profile-off</th><th class="n">PIT</th>
+        <th class="n">Risk reduction</th><th class="n">95% CI</th><th class="n">McNemar p</th></tr></thead>
+      <tbody>
+        <tr><td>Fast DDS</td><td>DRL</td><td class="n bad">8/10</td><td class="n good">0/10</td><td class="n">0.80</td><td class="n">[0.50, 1.00]</td><td class="n">0.0078</td></tr>
+        <tr><td>Fast DDS</td><td>DRL-VO</td><td class="n bad">10/10</td><td class="n good">0/10</td><td class="n">1.00</td><td class="n">[1.00, 1.00]</td><td class="n">0.0020</td></tr>
+        <tr><td>Cyclone DDS</td><td>DRL</td><td class="n bad">9/10</td><td class="n good">0/10</td><td class="n">0.90</td><td class="n">[0.70, 1.00]</td><td class="n">0.0039</td></tr>
+        <tr><td>Cyclone DDS</td><td>DRL-VO</td><td class="n bad">9/10</td><td class="n good">0/10</td><td class="n">0.90</td><td class="n">[0.70, 1.00]</td><td class="n">0.0039</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p>Equal-weighted across the four strata, the collision-risk reduction is <b>0.900</b>, stratified
+      bootstrap 95% CI <b>[0.800, 0.975]</b>. Including the normal baseline, the difference-in-differences
+      benefit is <b>0.875</b>, CI <b>[0.775, 0.975]</b>. Minimum-clearance benefit under fault is
+      <b>+0.3255 m</b>, CI <b>[+0.2920, +0.3575] m</b>. Collision here means geometric footprint overlap at
+      a combined radius of 0.47 m.</p>
+
+    <h3>What the mechanism did</h3>
+    <div class="tw">
+    <table>
+      <thead><tr><th>Observation under fault</th><th class="n">Profile-off</th><th class="n">PIT</th></tr></thead>
+      <tbody>
+        <tr><td>Runs admitting a stale final command at the actuator boundary</td><td class="n bad">40/40</td><td class="n good">0/40</td></tr>
+        <tr><td>Stale commands admitted</td><td class="n bad">447</td><td class="n good">0</td></tr>
+        <tr><td>Transfer to DWB</td><td class="n">0/40</td><td class="n good">40/40</td></tr>
+        <tr><td>DWB local-plan evidence and first fresh fallback command confirmed</td><td class="n">0/40</td><td class="n good">40/40</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p>Isolation detected the timing violation, Projection denied publication under the joint contract, and
+      Transfer initiated the handoff. Handoff latency was <b>302.39 ms</b> median and <b>371.46 ms</b> at
+      p95. All 160 trials reached <code>SUCCEEDED</code> or <code>HORIZON_COMPLETE</code>.</p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>Portability</h2>
+    <p class="sub">What the claim is, stated precisely</p>
+    <div class="claim">
+      <p>A new DDS requires <b>a backend capability descriptor and its connector</b>. It does not require
+        changes to the Harness Profile semantics, the PIT core, the learned controller, the fallback
+        controller, or the application code.</p>
+    </div>
+    <p>The same profile ran unchanged across Fast DDS and Cyclone DDS and across both policies. Swapping
+      the backend changes <code>RMW_IMPLEMENTATION</code> and the backend identity only. We do not claim
+      that every DDS is supported automatically without a connector. What the two backends demonstrate is
+      that <b>the decision core is RMW-agnostic at the ROS 2 interface</b>.</p>
+  </div>
+</section>
+
+<section id="next">
+  <div class="wrap">
+    <h2>Open directions</h2>
+    <p class="sub">What it takes to build each binding, and the hard part of each</p>
+    <p>The Nav2 evaluation shows the composition holding on one fault under one stack. Turning it into a
+      platform capability means building three bindings into the middleware itself. Each has a part that is
+      genuinely open, and naming it is more useful than claiming the binding is straightforward.</p>
+
+    <h3>Projection needs a hook in the publish path</h3>
+    <p>A ROS 2 message reaches the link through a fixed path. A publish call hands the sample down through
+      the client library to the RMW layer and then to DDS, and nothing along that path provides a generic
+      semantic admission gate that checks a learned output against its declared control, schedule, and link
+      contract. Projection needs a predicate evaluated before the sample is handed down, one that can admit
+      it, drop it, or replace it with the last admitted value. An autonomous-racing stack already runs such
+      a predicate over its learned output every cycle, but it does so in application code.</p>
+    <div class="note"><b>The hard part.</b> Observation is not free. How often should the hook check to
+      balance that cost against its benefit, and what latency can a per-sample predicate afford at a 1 kHz
+      control rate before it becomes the bottleneck it was meant to police?</div>
+
+    <h3>Isolation needs one reservation primitive</h3>
+    <p>Today a developer who wants to bound a model's footprint sets two things separately, a callback group
+      on the executor and a partition with a bandwidth limit on the DDS side, and nothing checks that the
+      two are consistent or that together they fit the model's declared load. Isolation asks for a single
+      primitive that takes a declaration of output rate, payload size, and worst-case inference time,
+      derives both settings jointly, and admits or rejects the reservation against what the platform has
+      already committed. Mixed-criticality scheduling and DDS-over-TSN supply the analysis, and what is
+      missing is their integration into the one reservation a robot declares and the middleware admits.</p>
+    <div class="note"><b>The hard part.</b> The admission test. Certifying that a new model load fits is not
+      two independent checks but one joint check across compute and communication, because a reservation
+      that is feasible on each axis alone can be infeasible when both are claimed at once. The admission
+      test is what certifies the composition.</div>
+
+    <h3>Transfer needs a lifecycle controller</h3>
+    <p>ROS 2 managed nodes already provide the state machine Transfer needs, an active state, an inactive
+      state, and transitions between them. Today those transitions are commanded by an operator or a launch
+      script, with no automatic trigger and no defined way back. Transfer asks for a controller in the
+      middleware that consumes a distributional indicator the model emits, an out-of-distribution score or a
+      confidence estimate, drives the active-to-inactive transition itself, and activates a verified
+      baseline node staged in advance.</p>
+    <div class="note"><b>The hard part.</b> The return. Reinstating the model takes a positive signal. It has
+      to run inside its declared bounds, confirmed by the reservation monitor, long enough to be trusted
+      again. How long, and confirmed by what, are open questions that can
+      be answered by building the controller and characterising it against the Nav2 recovery behaviours,
+      which today wire each fallback to a failure mode its developers anticipated in advance.</div>
+
+    <h3>The instrument this field does not have</h3>
+    <p>The language-agent community made a methodological move that robotics can copy outright. It reported
+      the harness together with the model, and built benchmarks that held the model fixed and swapped the
+      harness, where reliability then moved by an order of magnitude. Physical AI has no such
+      instrument.</p>
+    <div class="policy">
+      <div><b>A harness card</b><div class="diff">a manifest carried with the launch description</div>
+        <span>Records the output region it enforced, the inference budget it held, and the baseline it kept
+        staged, so two deployments can be compared on their governance as well as their collision
+        rate.</span></div>
+      <div><b>A harness benchmark</b><div class="diff">the more valuable deliverable</div>
+        <span>Fix a learned policy, vary the harness around it, and measure how much of a robot's safety and
+        reliability the harness itself accounts for.</span></div>
+    </div>
+    <p>For a decade the robot middleware community competed on one axis, which transport had the lowest
+      latency, which executor the tightest jitter, which discovery protocol scaled to the largest fleet.
+      That competition was productive and it is not finished. Physical AI moves the binding constraint. When
+      a learned model can swing a robot's reliability by an order of magnitude depending on what governs it,
+      <b>the layer that governs the model matters more than the layer that delivers its messages a few
+      microseconds sooner</b>.</p>
+  </div>
+</section>
+
+<section id="repro">
+  <div class="wrap">
+    <h2>Reproducibility</h2>
+    <p class="sub">Integrity audit of the reported matrix</p>
+    <ul>
+      <li><b>160 / 160</b> valid runs. No invalid or missing trials.</li>
+      <li><code>matrix_complete = true</code>, <code>mechanism_invariants_passed = true</code>, zero
+        mechanism failures.</li>
+      <li>160 result records, 160 model sidecars, and 160 gzip raw observation traces verified by SHA-256.
+        Zero trace hash mismatches. The Collision Monitor was preserved in both modes.</li>
+      <li>The run manifest carries SHA-256 for the trial runner, the parameter generator, the Harness
+        Profile, and the Nav2 parameter file. The analyser excludes any record without the locked revision.</li>
+    </ul>
+    <p class="hash">Profile SHA-256 &nbsp;625b6649e1cf28e673dd4bf8df6af71bbdde55ebfe96457c033d9b96fd87078d<br>
+      Manifest SHA-256 &nbsp;402c2d363e0625880025308db9dee0c7eed1daebdd317343e434ded86bbc9dc7<br>
+      Analyser SHA-256 &nbsp;1d318db8256c21209d26e1ce29ec38bd374fa78c10bfea8ff9f1ed6f73178292</p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>Release status</h2>
+    <p class="sub">Everything behind this page is public at
+      <a href="https://github.com/csi-dgist/ros2-harness-profile">csi-dgist/ros2-harness-profile</a></p>
+    <div class="status">
+      <div><b><span class="dot on"></span>Harness Profile</b><span>The semantic profile, its compiled
+        deployment form, and the per-RMW capability descriptors.</span></div>
+      <div><b><span class="dot on"></span>Results and statistics</b><span>All 160 audited run records, the
+        trial-level table, and the locked statistics behind every number here.</span></div>
+      <div><b><span class="dot on"></span>Runner and analyser</b><span>The trial runner, the audit and
+        statistics analyser, and the figure and replay scripts.</span></div>
+      <div><b><span class="dot on"></span>Core and adapters</b><span>The PIT decision core, the Nav2
+        adapters, and the Fast DDS and Cyclone DDS capability descriptors.</span></div>
+    </div>
+    <p>Start with <a href="https://github.com/csi-dgist/ros2-harness-profile#1-verify-the-published-numbers">Verify the published numbers</a>, which
+      re-derives every figure in this page from the shipped run records and needs nothing but Python. The
+      DRL and DRL-VO checkpoints stay with their upstream project, and the README explains how to fetch and
+      hash-check them.</p>
+    <div class="note" style="margin-top:22px">
+      <b>Note.</b> This page accompanies a Big Ideas paper currently in shepherding for ACM Middleware 2026.
+      Numbers here are from the locked held-out evaluation and will not change. The text may still be
+      revised as the camera-ready is prepared.
+    </div>
+  </div>
+</section>
+
+<section id="cite">
+  <div class="wrap">
+    <h2>Cite</h2>
+    <p class="sub">Big Ideas track, ACM Middleware 2026</p>
+<pre><code>@inproceedings{lee2026harness,
+  title     = {Harness Engineering for Physical {AI}:
+               Robot Middleware Is the Harness Layer},
+  author    = {Lee, Sanghoon and Chae, Jiyeong and Park, Kyung-Joon},
+  booktitle = {Proceedings of the ACM/IFIP International Middleware
+               Conference (Big Ideas Track)},
+  year      = {2026},
+  note      = {arXiv:2606.09416}
+}</code></pre>
+    <p>The preprint is on <a href="https://arxiv.org/abs/2606.09416">arXiv:2606.09416</a>. Correspondence to
+      Sanghoon Lee at DGIST.</p>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <p>Sanghoon Lee, Jiyeong Chae, Kyung-Joon Park — DGIST<br>
+      <a href="https://arxiv.org/abs/2606.09416">Harness Engineering for Physical AI: Robot Middleware Is the
+      Harness Layer</a>, ACM Middleware 2026 (Big Ideas).<br>
+      Code and data: <a href="https://github.com/csi-dgist/ros2-harness-profile">github.com/csi-dgist/ros2-harness-profile</a></p>
+  </div>
+</footer>
+
+<script>
+(function(){
+  var b=document.getElementById("themetog");
+  if(!b)return;
+  function label(){
+    var dark=document.documentElement.getAttribute("data-theme")==="dark";
+    b.textContent=dark?"Light":"Dark";
+    b.setAttribute("aria-label",dark?"Switch to the light theme":"Switch to the dark theme");
+  }
+  label();
+  b.addEventListener("click",function(){
+    var dark=document.documentElement.getAttribute("data-theme")==="dark";
+    var next=dark?"light":"dark";
+    document.documentElement.setAttribute("data-theme",next);
+    try{localStorage.setItem("hp-theme",next);}catch(e){}
+    label();
+  });
+})();
+</script>
+
+<script>
+(function () {
+  var D = {"meta":{"policy":"DRL-VO","dds":"Fast DDS","seed":30,"rRobot":0.22,"rObst":0.25},"arms":[{"id":"off","plan":[[-2.0,-0.5],[-1.91,-0.501],[-1.836,-0.511],[-1.762,-0.524],[-1.688,-0.538],[-1.614,-0.552],[-1.54,-0.564],[-1.466,-0.575],[-1.392,-0.585],[-1.318,-0.596],[-1.245,-0.599],[-1.171,-0.585],[-1.097,-0.573],[-1.023,-0.564],[-0.948,-0.558],[-0.878,-0.534],[-0.815,-0.494],[-0.76,-0.444],[-0.714,-0.384],[-0.677,-0.319],[-0.67,-0.246],[-0.6,-0.15]],"label":"Profile-off","obstacle":{"x":-0.7996,"y":-1.0008,"t":2.009},"trigger":{"x":-1.7295,"y":-0.5328,"t":1.51},"goal":[-0.6,-0.15],"path":[[0.0,-2.0,-0.5],[0.151,-2.0,-0.5],[0.302,-2.0,-0.5],[0.453,-1.9946,-0.5],[0.604,-1.9694,-0.5007],[0.754,-1.9321,-0.5025],[0.905,-1.8947,-0.5053],[1.057,-1.8575,-0.5093],[1.208,-1.8112,-0.516],[1.359,-1.7743,-0.5226],[1.51,-1.7377,-0.5304],[1.662,-1.7014,-0.5393],[2.16,-1.6028,-0.5692],[2.313,-1.5586,-0.5844],[2.466,-1.5238,-0.5973],[2.617,-1.4913,-0.6113],[2.769,-1.4573,-0.6256],[2.921,-1.4229,-0.6402],[3.072,-1.3802,-0.6593],[3.225,-1.3463,-0.6753],[3.377,-1.3126,-0.6917],[3.53,-1.2793,-0.7087],[3.681,-1.2358,-0.7312],[3.832,-1.196,-0.751],[3.985,-1.163,-0.7699],[4.136,-1.1309,-0.7892],[4.288,-1.0991,-0.809],[4.439,-1.0599,-0.8344],[4.59,-1.0288,-0.8554],[4.742,-0.9981,-0.8768],[4.893,-0.9703,-0.9008],[5.044,-0.9524,-0.9329],[5.535,-0.8754,-1.0006],[5.686,-0.8405,-1.0317],[5.836,-0.813,-1.0571],[5.988,-0.7859,-1.083],[6.139,-0.7593,-1.1093],[6.291,-0.7663,-1.1334],[6.442,-0.7542,-1.1668],[6.593,-0.7298,-1.1951],[6.746,-0.7058,-1.2239]],"events":[{"t":1.793,"k":"stale_admitted"},{"t":1.824,"k":"stale_admitted"},{"t":2.224,"k":"stale_admitted"},{"t":2.255,"k":"stale_admitted"},{"t":2.579,"k":"stale_admitted"},{"t":2.609,"k":"stale_admitted"},{"t":3.008,"k":"stale_admitted"},{"t":3.402,"k":"stale_admitted"},{"t":3.403,"k":"stale_admitted"},{"t":3.839,"k":"stale_admitted"},{"t":3.87,"k":"stale_admitted"},{"t":4.198,"k":"stale_admitted"},{"t":4.228,"k":"stale_admitted"},{"t":4.525,"k":"stale_admitted"},{"t":4.556,"k":"stale_admitted"}],"clearance":[[2.009,0.571],[2.86,0.2536],[4.06,-0.0506],[5.261,-0.3083]],"tClosest":5.686,"tContact":3.832,"duration":6.746,"verdict":{"overlap":true,"clearance":-0.3083,"staleAdmitted":15,"transfer":false,"handoffMs":null}},{"id":"pit","plan":[[-2.0,-0.5],[-1.91,-0.5],[-1.835,-0.511],[-1.762,-0.525],[-1.688,-0.54],[-1.615,-0.556],[-1.541,-0.571],[-1.468,-0.584],[-1.393,-0.594],[-1.319,-0.599],[-1.244,-0.598],[-1.171,-0.582],[-1.096,-0.573],[-1.021,-0.565],[-0.947,-0.56],[-0.877,-0.536],[-0.814,-0.495],[-0.76,-0.444],[-0.715,-0.384],[-0.677,-0.319],[-0.669,-0.246],[-0.6,-0.15]],"label":"PIT","obstacle":{"x":-0.697,"y":-0.5909,"t":2.316},"trigger":{"x":-1.7382,"y":-0.5359,"t":1.514},"goal":[-0.6,-0.15],"path":[[0.0,-2.0,-0.5],[0.151,-2.0,-0.5],[0.301,-2.0,-0.5],[0.455,-1.9907,-0.5001],[0.607,-1.9609,-0.501],[0.757,-1.9142,-0.5037],[0.908,-1.8769,-0.5072],[1.06,-1.8397,-0.5118],[1.211,-1.8028,-0.5176],[1.362,-1.766,-0.5246],[1.514,-1.7203,-0.535],[1.665,-1.6841,-0.5444],[1.817,-1.6481,-0.5546],[1.968,-1.6122,-0.5654],[2.468,-1.518,-0.5993],[2.62,-1.4894,-0.6185],[2.771,-1.4577,-0.6276],[2.922,-1.4371,-0.6315],[3.074,-1.4182,-0.6333],[3.226,-1.4074,-0.6335],[3.377,-1.4074,-0.6335],[3.528,-1.4074,-0.6335],[3.68,-1.4077,-0.634],[3.832,-1.4084,-0.6354],[3.985,-1.4084,-0.6354],[4.136,-1.4099,-0.6362],[4.287,-1.4108,-0.6367],[4.44,-1.4102,-0.6368],[4.591,-1.4007,-0.6385],[4.743,-1.4002,-0.6386],[4.894,-1.3945,-0.6357],[5.045,-1.3859,-0.6314],[5.196,-1.3859,-0.6314],[5.349,-1.3925,-0.6381],[5.843,-1.3948,-0.6404],[5.994,-1.3948,-0.6404],[6.145,-1.3948,-0.6404],[6.297,-1.3948,-0.6404],[6.448,-1.3928,-0.6293],[6.599,-1.3914,-0.6216],[6.75,-1.3912,-0.6226],[6.901,-1.3907,-0.6257],[7.053,-1.3906,-0.626]],"events":[{"t":2.063,"k":"stale_blocked"},{"t":2.063,"k":"transfer"},{"t":2.092,"k":"stale_blocked"}],"clearance":[[2.316,0.5727],[2.827,0.2855],[3.222,0.2453],[3.622,0.2348],[4.024,0.2201],[4.422,0.2296],[5.424,0.2251]],"tClosest":5.045,"tContact":null,"duration":7.053,"verdict":{"overlap":false,"clearance":0.2201,"staleAdmitted":0,"transfer":true,"handoffMs":260.9}}]};
+  var panes = document.getElementById("rpPanes");
+  if (!panes) return;
+
+  var SVGNS = "http://www.w3.org/2000/svg";
+  var W = 470, PAD = 14;
+  var rR = D.meta.rRobot, rO = D.meta.rObst;
+  var H_OBST = 0.80, Z0 = 0.045, Z1 = 0.155;   // SDF 실제값. cylinder length 0.8 m
+
+  // 정사영 카메라. 오른쪽 u, 깊이 d, 위쪽 v.
+  var AZ = -1.15, EL = 0.46;
+  var cA = Math.cos(AZ), sA = Math.sin(AZ), cE = Math.cos(EL), sE = Math.sin(EL);
+  function pu(x, y) { return -x * sA + y * cA; }
+  function pd(x, y) { return x * cA + y * sA; }
+  function pv(x, y, z) { return -pd(x, y) * sE + z * cE; }
+
+  // 두 arm 이 같은 지면과 같은 화면 좌표계를 쓴다.
+  var wx = [], wy = [];
+  D.arms.forEach(function (a) {
+    a.path.forEach(function (q) { wx.push(q[1]); wy.push(q[2]); });
+    wx.push(a.obstacle.x); wy.push(a.obstacle.y);
+    if (a.goal) { wx.push(a.goal[0]); wy.push(a.goal[1]); }
+  });
+  var M = 0.42;
+  var GX0 = Math.min.apply(null, wx) - M, GX1 = Math.max.apply(null, wx) + M;
+  var GY0 = Math.min.apply(null, wy) - M, GY1 = Math.max.apply(null, wy) + M;
+
+  var us = [], vs = [];
+  [[GX0, GY0], [GX1, GY0], [GX1, GY1], [GX0, GY1]].forEach(function (q) {
+    us.push(pu(q[0], q[1]));
+    vs.push(pv(q[0], q[1], 0)); vs.push(pv(q[0], q[1], H_OBST + 0.05));
+  });
+  var u0 = Math.min.apply(null, us), u1 = Math.max.apply(null, us);
+  var v0 = Math.min.apply(null, vs), v1 = Math.max.apply(null, vs);
+  var SC = (W - 2 * PAD) / (u1 - u0);
+  var H = Math.round((v1 - v0) * SC + 2 * PAD);
+  function SX(x, y) { return PAD + (pu(x, y) - u0) * SC; }
+  function SY(x, y, z) { return H - PAD - (pv(x, y, z) - v0) * SC; }
+  function P(x, y, z) { return SX(x, y).toFixed(1) + "," + SY(x, y, z || 0).toFixed(1); }
+
+  function el(tag, attrs) {
+    var e = document.createElementNS(SVGNS, tag);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    return e;
+  }
+  function ring(cx, cy, r, z, n) {
+    var out = [];
+    for (var i = 0; i < (n || 40); i++) {
+      var t = i / (n || 40) * 2 * Math.PI;
+      out.push([cx + r * Math.cos(t), cy + r * Math.sin(t)]);
+    }
+    return out.map(function (q) { return P(q[0], q[1], z); }).join(" ");
+  }
+  function band(pts, za, zb) {
+    // 정사영에서 볼록한 옆면은 아래 테두리 + 위 테두리 역순으로 채운다.
+    var a = pts.map(function (q) { return P(q[0], q[1], za); });
+    var b = pts.slice().reverse().map(function (q) { return P(q[0], q[1], zb); });
+    return a.concat(b).join(" ");
+  }
+  function circlePts(cx, cy, r, n) {
+    var out = [];
+    for (var i = 0; i < n; i++) {
+      var t = i / n * 2 * Math.PI;
+      out.push([cx + r * Math.cos(t), cy + r * Math.sin(t)]);
+    }
+    return out;
+  }
+  function bodyPts(cx, cy, yaw) {
+    // 모서리를 둥글린 178 x 138 mm 판.
+    var L = 0.178 / 2, Wd = 0.138 / 2, r = 0.022, out = [];
+    var corners = [[L - r, Wd - r, 0], [-(L - r), Wd - r, Math.PI / 2],
+                   [-(L - r), -(Wd - r), Math.PI], [L - r, -(Wd - r), 3 * Math.PI / 2]];
+    corners.forEach(function (c) {
+      for (var i = 0; i <= 4; i++) {
+        var t = c[2] + i / 4 * Math.PI / 2;
+        var px = c[0] + r * Math.cos(t), py = c[1] + r * Math.sin(t);
+        out.push([cx + px * Math.cos(yaw) - py * Math.sin(yaw),
+                  cy + px * Math.sin(yaw) + py * Math.cos(yaw)]);
+      }
+    });
+    return out;
+  }
+
+  var DUR = Math.max.apply(null, D.arms.map(function (a) { return a.duration; }));
+  var views = D.arms.map(build);
+
+  function build(a) {
+    var pane = document.createElement("div");
+    pane.className = "pane";
+    var col = a.id === "off" ? "var(--bad)" : "var(--good)";
+
+    var cap = document.createElement("p");
+    cap.className = "cap";
+    cap.innerHTML = '<span style="color:' + col + '">' + a.label + '</span><span class="st"></span>';
+    pane.appendChild(cap);
+
+    var svg = el("svg", { viewBox: "0 0 " + W + " " + H, role: "img",
+      "aria-label": a.label + " replay of held-out seed " + D.meta.seed });
+
+    // 지면과 격자. 두 패널이 같은 사각형을 쓴다.
+    svg.appendChild(el("polygon", { points: [P(GX0, GY0), P(GX1, GY0), P(GX1, GY1), P(GX0, GY1)].join(" "),
+      fill: "var(--soft)", stroke: "var(--bd)", "stroke-width": 1 }));
+    var g = el("g", { stroke: "var(--bd)", "stroke-width": .6, opacity: ".7" });
+    for (var gx = Math.ceil(GX0 * 2) / 2; gx <= GX1; gx += .5)
+      g.appendChild(el("line", { x1: SX(gx, GY0), y1: SY(gx, GY0, 0), x2: SX(gx, GY1), y2: SY(gx, GY1, 0) }));
+    for (var gy = Math.ceil(GY0 * 2) / 2; gy <= GY1; gy += .5)
+      g.appendChild(el("line", { x1: SX(GX0, gy), y1: SY(GX0, gy, 0), x2: SX(GX1, gy), y2: SY(GX1, gy, 0) }));
+    svg.appendChild(g);
+
+    if (a.plan && a.plan.length) {
+      svg.appendChild(el("polyline", { points: a.plan.map(function (q) { return P(q[0], q[1], .004); }).join(" "),
+        fill: "none", stroke: "var(--mut)", "stroke-width": 1, "stroke-dasharray": "5 4", opacity: ".5" }));
+    }
+    svg.appendChild(el("circle", { cx: SX(a.path[0][1], a.path[0][2]),
+      cy: SY(a.path[0][1], a.path[0][2], 0), r: 3.2, fill: "var(--mut)" }));
+    if (a.goal) {
+      svg.appendChild(el("circle", { cx: SX(a.goal[0], a.goal[1]), cy: SY(a.goal[0], a.goal[1], 0),
+        r: 4, fill: "none", stroke: "var(--accent)", "stroke-width": 1.6 }));
+    }
+
+    var trail = el("polyline", { points: "", fill: "none", stroke: col,
+      "stroke-width": 2.4, "stroke-linecap": "round", "stroke-linejoin": "round" });
+    svg.appendChild(trail);
+
+    var fault = el("g", { opacity: 0 });
+    var fx = SX(a.trigger.x, a.trigger.y), fy = SY(a.trigger.x, a.trigger.y, 0);
+    fault.appendChild(el("path", { d: "M" + (fx - 5) + " " + (fy - 9) + "h10l-5 9z", fill: "#b5740a" }));
+    svg.appendChild(fault);
+
+    // 깊이 순서. 먼 것을 먼저 그린다. 장면 안에서 순서가 바뀌지 않으므로 한 번만 정한다.
+    var oDepth = pd(a.obstacle.x, a.obstacle.y);
+    var rDepth = pd(a.path[a.path.length - 1][1], a.path[a.path.length - 1][2]);
+    var obst = el("g", { opacity: 0 });
+    var obstCircle = circlePts(a.obstacle.x, a.obstacle.y, rO, 40);
+    obst.appendChild(el("polygon", { points: ring(a.obstacle.x, a.obstacle.y, rO, 0),
+      fill: "#7a6a58", "fill-opacity": ".22", stroke: "#7a6a58", "stroke-width": 1.2 }));
+    obst.appendChild(el("polygon", { points: band(obstCircle, 0, H_OBST),
+      fill: "#7a6a58", "fill-opacity": ".30", stroke: "none" }));
+    obst.appendChild(el("polygon", { points: ring(a.obstacle.x, a.obstacle.y, rO, H_OBST),
+      fill: "#8d7c68", "fill-opacity": ".85", stroke: "#6b5c4b", "stroke-width": 1 }));
+
+    var robot = el("g", {});
+    var foot = el("polygon", { points: "", fill: col, "fill-opacity": ".14",
+      stroke: col, "stroke-width": 1.4 });
+    var side = el("polygon", { points: "", fill: "#4a5765", stroke: "none" });
+    var top = el("polygon", { points: "", fill: "#8b98a6", stroke: "#3d4a58", "stroke-width": .8 });
+    var lds = el("polygon", { points: "", fill: "#2f3a46", stroke: "none" });
+    var wheelL = el("polygon", { points: "", fill: "#232c36", stroke: "none" });
+    var wheelR = el("polygon", { points: "", fill: "#232c36", stroke: "none" });
+    robot.appendChild(foot); robot.appendChild(wheelL); robot.appendChild(wheelR);
+    robot.appendChild(side); robot.appendChild(top); robot.appendChild(lds);
+
+    if (oDepth > rDepth) { svg.appendChild(obst); svg.appendChild(robot); }
+    else { svg.appendChild(robot); svg.appendChild(obst); }
+
+    pane.appendChild(svg);
+
+    var read = document.createElement("div");
+    read.className = "read";
+    read.innerHTML = '<span>delay injected <b class="f">&mdash;</b></span>' +
+      '<span>gap, pose trace <b class="g">&mdash;</b></span>' +
+      '<span>stale admitted <b class="s">0</b></span>' +
+      '<span>blocked <b class="b">0</b></span>' +
+      '<span>control <b class="c">learned policy</b></span>';
+    pane.appendChild(read);
+    panes.appendChild(pane);
+
+    return { a: a, cap: cap.querySelector(".st"), obst: obst, fault: fault, trail: trail,
+      foot: foot, side: side, top: top, lds: lds, wheelL: wheelL, wheelR: wheelR,
+      f: read.querySelector(".f"), g: read.querySelector(".g"),
+      s: read.querySelector(".s"), b: read.querySelector(".b"),
+      c: read.querySelector(".c") };
+  }
+
+  function stopT(a, t) {
+    // 두 발자국이 맞닿으면 로봇은 거기서 멈춘다.
+    return (a.tContact !== null && t > a.tContact) ? a.tContact : t;
+  }
+
+  function posAt(a, t) {
+    var p = a.path;
+    if (t <= p[0][0]) return [p[0][1], p[0][2], 0];
+    for (var i = 1; i < p.length; i++) {
+      if (t <= p[i][0]) {
+        var f = (t - p[i - 1][0]) / (p[i][0] - p[i - 1][0] || 1);
+        var yaw = Math.atan2(p[i][2] - p[i - 1][2], p[i][1] - p[i - 1][1]);
+        return [p[i - 1][1] + f * (p[i][1] - p[i - 1][1]),
+                p[i - 1][2] + f * (p[i][2] - p[i - 1][2]), yaw];
+      }
+    }
+    var n = p.length - 1;
+    return [p[n][1], p[n][2], Math.atan2(p[n][2] - p[n - 1][2], p[n][1] - p[n - 1][1])];
+  }
+
+  function drawRobot(v, x, y, yaw, col, hit) {
+    var body = bodyPts(x, y, yaw);
+    v.foot.setAttribute("points", ring(x, y, rR, .002));
+    v.foot.setAttribute("stroke", col);
+    v.foot.setAttribute("fill", col);
+    v.foot.setAttribute("fill-opacity", hit ? ".38" : ".14");
+    v.foot.setAttribute("stroke-width", hit ? 2.4 : 1.4);
+    v.side.setAttribute("points", band(body, Z0, Z1));
+    v.top.setAttribute("points", body.map(function (q) { return P(q[0], q[1], Z1); }).join(" "));
+    v.lds.setAttribute("points", ring(x, y, .0375, Z1 + .04));
+    var ax = Math.cos(yaw + Math.PI / 2) * .080, ay = Math.sin(yaw + Math.PI / 2) * .080;
+    v.wheelL.setAttribute("points", ring(x + ax, y + ay, .033, .033, 14));
+    v.wheelR.setAttribute("points", ring(x - ax, y - ay, .033, .033, 14));
+  }
+
+  function render(t) {
+    views.forEach(function (v) {
+      var a = v.a, col = a.id === "off" ? "var(--bad)" : "var(--good)";
+      var raw = Math.min(t, a.duration);
+      var tt = stopT(a, raw);
+      var hitNow = a.tContact !== null && raw >= a.tContact;
+      var q = posAt(a, tt);
+
+      var pts = [];
+      for (var i = 0; i < a.path.length && a.path[i][0] <= tt; i++)
+        pts.push(P(a.path[i][1], a.path[i][2], .012));
+      pts.push(P(q[0], q[1], .012));
+      v.trail.setAttribute("points", pts.join(" "));
+
+      var shown = a.obstacle.t !== null && tt >= a.obstacle.t;
+      v.obst.setAttribute("opacity", shown ? 1 : 0);
+      v.fault.setAttribute("opacity", tt >= a.trigger.t ? 1 : 0);
+
+      var d = shown ? Math.hypot(q[0] - a.obstacle.x, q[1] - a.obstacle.y) - rR - rO : null;
+      drawRobot(v, q[0], q[1], q[2], col, hitNow);
+
+      var nS = 0, nB = 0, xfer = false;
+      a.events.forEach(function (e) {
+        if (e.t > tt) return;
+        if (e.k === "stale_admitted") nS++;
+        else if (e.k === "stale_blocked") nB++;
+        else if (e.k === "transfer") xfer = true;
+      });
+      v.s.textContent = nS; v.b.textContent = nB;
+      v.c.textContent = xfer ? "DWB fallback" : "learned policy";
+      v.c.style.color = xfer ? "var(--good)" : "";
+
+      // fault 값은 컴파일된 Profile 의 fault 블록에서 온다.
+      // safe_but_late_compute_ms 120 + transport_ms 1.
+      var armed = tt >= a.trigger.t && !xfer;
+      v.f.textContent = armed ? "+121 ms hold" : (xfer ? "none on DWB output" : "\u2014");
+      v.f.style.color = armed ? "#b5740a" : "";
+
+      if (hitNow) {
+        v.g.textContent = "contact";
+        v.g.style.color = "var(--bad)";
+      } else if (d !== null) {
+        v.g.textContent = (d >= 0 ? "+" : "\u2212") + Math.abs(d).toFixed(2) + " m";
+        v.g.style.color = "";
+      } else { v.g.textContent = "\u2014"; v.g.style.color = ""; }
+
+      if (hitNow) {
+        v.cap.textContent = "stopped on contact at t = " + a.tContact.toFixed(2) + " s";
+        v.cap.style.color = "var(--bad)";
+      } else if (raw >= a.duration) {
+        v.cap.textContent = "reached the goal, footprints clear +"
+          + a.verdict.clearance.toFixed(2) + " m";
+        v.cap.style.color = col;
+      } else {
+        v.cap.textContent = "t = " + raw.toFixed(2) + " s";
+        v.cap.style.color = "";
+      }
+    });
+  }
+
+  var t = 0, playing = false, last = 0, speed = 1;
+  var bPlay = document.getElementById("rpPlay");
+  var bReset = document.getElementById("rpReset");
+  var scrub = document.getElementById("rpScrub");
+  var clock = document.getElementById("rpClock");
+  var sel = document.getElementById("rpSpeed");
+
+  function paint() {
+    render(t);
+    scrub.value = Math.round(t / DUR * 1000);
+    clock.textContent = t.toFixed(2) + " s / " + DUR.toFixed(2) + " s";
+    bPlay.textContent = playing ? "Pause" : (t >= DUR ? "Replay" : "Play");
+  }
+  function frame(now) {
+    if (!playing) return;
+    if (last) t = Math.min(DUR, t + (now - last) / 1000 * speed);
+    last = now;
+    paint();
+    if (t >= DUR) { playing = false; paint(); return; }
+    requestAnimationFrame(frame);
+  }
+  function play() {
+    if (t >= DUR) t = 0;
+    playing = true; last = 0; paint(); requestAnimationFrame(frame);
+  }
+  bPlay.addEventListener("click", function () {
+    if (playing) { playing = false; paint(); } else play();
+  });
+  bReset.addEventListener("click", function () { t = 0; playing = false; paint(); });
+  scrub.addEventListener("input", function () {
+    playing = false; t = scrub.value / 1000 * DUR; paint();
+  });
+  sel.addEventListener("change", function () { speed = parseFloat(sel.value); });
+
+  paint();
+
+  var reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (!reduced && "IntersectionObserver" in window) {
+    var once = false;
+    var io = new IntersectionObserver(function (es) {
+      es.forEach(function (e) {
+        if (e.isIntersecting && !once) { once = true; play(); io.disconnect(); }
+      });
+    }, { threshold: 0.4 });
+    io.observe(document.getElementById("replay"));
+  }
+})();
+</script>
+
+</body>
+</html>

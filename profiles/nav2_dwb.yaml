@@ -1,0 +1,25 @@
+experiment:
+  application: nav2_navigate_to_pose
+  adapter: nav2_twist
+  primary_controller: AIController
+  fallback_controller: DWB
+  controller_candidate_topic: /pit/controller_candidate
+  learned_candidate_topic: /pit/learned_candidate
+  guarded_output_topic: /cmd_vel_guarded
+  final_output_topic: /cmd_vel
+  selector_topic: /controller_selector
+  fallback_evidence_topic: /local_plan
+  fallback_evidence_type: nav_msgs/msg/Path
+contract:
+  value_bounds:
+    linear_x: [-0.01, 0.6]
+    angular_z: [-1.1, 1.1]
+  max_staleness_ms: 80
+  compute_budget_ms: 40
+  transport_budget_ms: 80
+  replace_invalid_with_safe_value: true
+fault:
+  safe_but_late_compute_ms: 120
+  transport_ms: 1
+  arm_after_nonzero_samples: 10
+  transfer_settle_ms: 60

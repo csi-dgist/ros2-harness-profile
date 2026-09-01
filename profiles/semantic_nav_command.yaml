@@ -1,0 +1,27 @@
+profile:
+  id: safe-mobile-command-v1
+  composition: projection-isolation-transfer
+  command_fields:
+    forward_speed: {minimum: -0.01, maximum: 0.6}
+    yaw_rate: {minimum: -1.1, maximum: 1.1}
+  timing:
+    max_staleness_ms: 80
+    compute_budget_ms: 40
+    transport_budget_ms: 80
+  response:
+    replace_value_violation_with_safe_value: true
+    block_timing_violation: true
+    transfer_on_timing_violation: true
+    transfer_target_role: verified_fallback
+  required_backend_capabilities:
+    - observe_typed_candidate
+    - observe_source_timestamp
+    - suppress_before_actuator_endpoint
+    - publish_safe_replacement
+    - publish_transfer_decision
+    - record_normalized_evidence
+fault_calibration:
+  safe_but_late_compute_ms: 120
+  transport_ms: 1
+  arm_after_nonzero_samples: 10
+  transfer_settle_ms: 60
